@@ -88,40 +88,58 @@ def nivel(valor):
     return "bajo" if valor < 35 else ("medio" if valor < 65 else "alto")
 
 
-def recomendaciones(x, res):
-    """Mismas condiciones que la encuesta del estudiante, más la alerta interna."""
+# (id, mensaje para el estudiante, mensaje para el equipo, fuente)
+MENSAJES = {
+    "rec_cond": ("Académicamente vas bien, pero tu descanso y tu ánimo están bajos. No los descuides: también cuentan.",
+                 "Académicamente va bien, pero su descanso y su ánimo están bajos.", "Benítez-Agudelo et al. 2025"),
+    "rec_sueno_bajo": ("Duermes menos de 6 horas. Apunta a 7–9 horas con un horario regular y sin pantallas antes de dormir.",
+                       "Duerme menos de 6 horas: apuntar a 7–9 horas con horario regular.", "Hirshkowitz et al. 2015; Creswell et al. 2023"),
+    "rec_sueno_alto": ("Duermes 10 horas o más. Si aun así te sientes cansado, consúltalo en Bienestar.",
+                       "Duerme 10 horas o más: si aun así se siente cansado, derivar a Bienestar.", "Vedaa et al. 2019"),
+    "rec_emo": ("En las últimas semanas te has sentido agobiado. Bienestar Estudiantil ofrece apoyo; los programas de manejo del estrés y de mindfulness ayudan.",
+                "Se ha sentido agobiado: ofrecer apoyo de Bienestar Estudiantil (manejo del estrés, mindfulness).", "Regehr et al. 2013"),
+    "rec_asis": ("Tu asistencia está por debajo del 75 %. Por encima de ese nivel la asistencia se nota en la nota.",
+                 "Asistencia por debajo del 75 %.", "Credé et al. 2010; Tomal et al. 2026"),
+    "rec_horas_nota": ("Dedicas bastante tiempo, pero no se refleja en tu nota. Prueba planificar, practicar con ejercicios y repasar en vez de solo releer.",
+                       "Dedica bastante tiempo pero no se refleja en la nota: revisar técnicas de estudio.", "Theobald 2021"),
+    "rec_metodo": ("Arma un horario semanal y fija metas concretas por curso: es la estrategia con más efecto.",
+                   "Sin método de estudio: horario semanal y metas por curso.", "Theobald 2021; Broadbent et al. 2015"),
+    "rec_metodo_casi": ("Estás cerca de un buen nivel: un método de estudio (horario, metas por curso) es lo que más suele sumar.",
+                        "Cerca de un buen nivel: un método de estudio es lo que más suele sumar.", "Theobald 2021"),
+    "rec_ent": ("Si te cuesta entender los temas, busca tutoría o un grupo de estudio con compañeros de ciclos superiores.",
+                "Le cuesta entender los temas: tutoría o grupo de estudio.", "Zhang et al. 2024"),
+    "rec_int": ("Conecta el curso con lo que quieres hacer después; si no encuentras el para qué, conversalo con tu tutor.",
+                "Poco interés: conectar el curso con sus metas; conversar con su tutor.", "Howard et al. 2021"),
+    "rec_part": ("Intenta una pregunta o comentario por clase: participar se asocia con aprender más.",
+                 "Participa poco en clase.", "Lei et al. 2018"),
+    "rec_alerta": (None, "ALERTA INTERNA: bienestar bajo. Ofrecer mentoría o derivar a tutoría (no se muestra al estudiante).",
+                   "Alonso García et al. 2024; Sinval et al. 2024"),
+    "rec_ok": ("Vas muy bien en las tres dimensiones. Sigue así.", "Va bien en las tres dimensiones.", "—"),
+}
+
+
+def recomendaciones(x, res, para="interno"):
+    """Mismas condiciones que la encuesta del estudiante. para = "interno" (dashboard) o "estudiante"."""
     r = res["valor"]
     B = r["I"]
+    ids = []
+    if r["A"] >= 65 and r["Co"] < 35: ids.append("rec_cond")
+    if x["sueno"] < 6: ids.append("rec_sueno_bajo")
+    if x["sueno"] >= 10: ids.append("rec_sueno_alto")
+    if x["emocion"] <= 2.5: ids.append("rec_emo")
+    if x["asistencia"] < 75: ids.append("rec_asis")
+    if x["horas"] >= 5 and x["notas"] < 12: ids.append("rec_horas_nota")
+    if x["metodo"] < 0.5: ids.append("rec_metodo")
+    if all(35 <= r[b] < 65 for b in BLOQUES) and r["C"] >= 55: ids.append("rec_metodo_casi")
+    if x["entendimiento"] <= 2.5: ids.append("rec_ent")
+    if x["interes"] <= 2.5: ids.append("rec_int")
+    if x["participacion"] <= 2: ids.append("rec_part")
+    if B < 35: ids.append("rec_alerta")
+    if not ids and B >= 65: ids.append("rec_ok")
     out = []
-
-    def add(rid, msg, src, interna=False):
-        out.append({"id": rid, "msg": msg, "src": src, "interna": interna})
-
-    if r["A"] >= 65 and r["Co"] < 35:
-        add("rec_cond", "Académicamente va bien, pero su descanso y su ánimo están bajos.", "Benítez-Agudelo et al. 2025")
-    if x["sueno"] < 6:
-        add("rec_sueno_bajo", "Duerme menos de 6 horas: apuntar a 7–9 horas con horario regular.", "Hirshkowitz et al. 2015; Creswell et al. 2023")
-    if x["sueno"] >= 10:
-        add("rec_sueno_alto", "Duerme 10 horas o más: si aun así se siente cansado, derivar a Bienestar.", "Vedaa et al. 2019")
-    if x["emocion"] <= 2.5:
-        add("rec_emo", "Se ha sentido agobiado: ofrecer apoyo de Bienestar Estudiantil (manejo del estrés, mindfulness).", "Regehr et al. 2013")
-    if x["asistencia"] < 75:
-        add("rec_asis", "Asistencia por debajo del 75 %.", "Credé et al. 2010; Tomal et al. 2026")
-    if x["horas"] >= 5 and x["notas"] < 12:
-        add("rec_horas_nota", "Dedica bastante tiempo pero no se refleja en la nota: revisar técnicas de estudio.", "Theobald 2021")
-    if x["metodo"] < 0.5:
-        add("rec_metodo", "Sin método de estudio: horario semanal y metas por curso.", "Theobald 2021; Broadbent et al. 2015")
-    if all(35 <= r[b] < 65 for b in BLOQUES) and r["C"] >= 55:
-        add("rec_metodo_casi", "Cerca de un buen nivel: un método de estudio es lo que más suele sumar.", "Theobald 2021")
-    if x["entendimiento"] <= 2.5:
-        add("rec_ent", "Le cuesta entender los temas: tutoría o grupo de estudio.", "Zhang et al. 2024")
-    if x["interes"] <= 2.5:
-        add("rec_int", "Poco interés: conectar el curso con sus metas; conversar con su tutor.", "Howard et al. 2021")
-    if x["participacion"] <= 2:
-        add("rec_part", "Participa poco en clase.", "Lei et al. 2018")
-    if B < 35:
-        add("rec_alerta", "ALERTA INTERNA: bienestar bajo. Ofrecer mentoría o derivar a tutoría (no se muestra al estudiante).",
-            "Alonso García et al. 2024; Sinval et al. 2024", interna=True)
-    if not out and B >= 65:
-        add("rec_ok", "Va bien en las tres dimensiones.", "—")
+    for i in ids:
+        est, interno, src = MENSAJES[i]
+        if para == "estudiante" and est is None:
+            continue
+        out.append({"id": i, "msg": est if para == "estudiante" else interno, "src": src, "interna": i == "rec_alerta"})
     return out

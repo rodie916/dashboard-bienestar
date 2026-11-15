@@ -149,12 +149,16 @@ def procesar_streamlit(df):
         x = {v: num(r.get(v)) for v in VARS}
         p = {"id": f"S{i}", "fila": i, "origen": "Streamlit", "marca": r.get("marca_temporal"),
              "carrera": normalizar_carrera(r.get("carrera")), "ciclo": r.get("ciclo") if isinstance(r.get("ciclo"), str) and r.get("ciclo") else "Sin dato",
-             "apoyo": [], "cursos": [s.strip() for s in str(r.get("cursos", "")).split(",") if s.strip() and s.strip() != "nan"],
+             "apoyo": [a.strip() for a in str(r.get("apoyo", "")).split(",") if a.strip() and a.strip() != "nan"],
+             "cursos": [s.strip() for s in str(r.get("cursos", "")).split(",") if s.strip() and s.strip() != "nan"],
              "x": x, "crudo": {v: r.get(v) for v in VARS},
              "R1": num(r.get("R1")), "R2": num(r.get("R2")), "R3": num(r.get("R3")),
              "valida": not any(math.isnan(x[v]) for v in VARS), "motivo": ""}
         if not p["valida"]:
             p["motivo"] = "Respuestas incompletas"
+        at = num(r.get("atencion"))
+        if not math.isnan(at) and at != 4:
+            p.update(valida=False, motivo="Falló la pregunta de atención")
         personas.append(p)
     return personas
 
